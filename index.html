@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Master Geometri Interaktif</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #020617;
+            --card: #0f172a;
+            --primary: #38bdf8;
+            --secondary: #fb7185;
+            --accent: #a855f7;
+            --success: #4ade80;
+            --text: #f8fafc;
+            --muted: #94a3b8;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        header {
+            text-align: center;
+            padding: 2rem 1rem;
+        }
+
+        h1 {
+            margin: 0;
+            font-weight: 800;
+            letter-spacing: -1px;
+            background: linear-gradient(to right, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Tab Navigation */
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 2rem;
+            background: var(--card);
+            padding: 8px;
+            border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .tab-btn {
+            padding: 12px 24px;
+            border: none;
+            background: transparent;
+            color: var(--muted);
+            cursor: pointer;
+            border-radius: 12px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn.active {
+            background: var(--primary);
+            color: var(--bg);
+        }
+
+        .tab-btn:hover:not(.active) {
+            background: rgba(255,255,255,0.05);
+            color: var(--text);
+        }
+
+        /* Container & Canvas */
+        .main-container {
+            background: var(--card);
+            padding: 2rem;
+            border-radius: 32px;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+            border: 1px solid rgba(255,255,255,0.1);
+            text-align: center;
+            width: fit-content;
+        }
+
+        canvas {
+            background: #000;
+            border-radius: 20px;
+            cursor: crosshair;
+            box-shadow: inset 0 4px 20px rgba(0,0,0,0.6);
+            max-width: 100%;
+        }
+
+        .info-panel {
+            margin-top: 1.5rem;
+            padding: 1.2rem;
+            background: rgba(2, 6, 23, 0.5);
+            border-radius: 16px;
+            min-height: 60px;
+            border: 1px solid rgba(255,255,255,0.05);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            max-width: 600px;
+        }
+
+        #status { font-size: 1.1rem; color: var(--muted); margin: 0; line-height: 1.5; }
+        
+        /* Highlight Utility Classes */
+        .hl-p { color: var(--primary); font-weight: bold; }
+        .hl-s { color: var(--secondary); font-weight: bold; }
+        .hl-a { color: var(--success); font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Master Geometri Interaktif</h1>
+         <h1>Emanuela Merlin Tandi, S.Pd</h1>
+        <p style="color: var(--muted)">Pelajari sifat-sifat bangun datar melalui visualisasi dinamis</p>
+    </header>
+
+    <nav class="tabs">
+        <button class="tab-btn active" onclick="switchShape('persegi')">Persegi</button>
+        <button class="tab-btn" onclick="switchShape('persegiPanjang')">Persegi Panjang</button>
+        <button class="tab-btn" onclick="switchShape('belahKetupat')">Belah Ketupat</button>
+        <button class="tab-btn" onclick="switchShape('jajarGenjang')">Jajar Genjang</button>
+    </nav>
+
+    <div class="main-container">
+        <canvas id="mainCanvas" width="600" height="400"></canvas>
+        <div class="info-panel">
+            <p id="status">Pilih salah satu sisi, diagonal, atau sudut pada gambar.</p>
+        </div>
+    </div>
+
+<script>
+    const canvas = document.getElementById('mainCanvas');
+    const ctx = canvas.getContext('2d');
+    const statusEl = document.getElementById('status');
+    let currentShape = 'persegi';
+
+    // Data Bangun Datar
+    const shapes = {
+        persegi: {
+            points: { A: {x:200,y:100}, B: {x:400,y:100}, C: {x:400,y:300}, D: {x:200,y:300} },
+            sides: [
+                {id:'AB', p:'A', q:'B', pair: [0,1,2,3]}, {id:'BC', p:'B', q:'C', pair: [0,1,2,3]},
+                {id:'CD', p:'C', q:'D', pair: [0,1,2,3]}, {id:'DA', p:'D', q:'A', pair: [0,1,2,3]}
+            ],
+            diagonals: [{id:'AC', p:'A', q:'C'}, {id:'BD', p:'B', q:'D'}],
+            angles: [
+                {id:'A', c:'A', p1:'B', p2:'D', deg:90}, {id:'B', c:'B', p1:'C', p2:'A', deg:90},
+                {id:'C', c:'C', p1:'D', p2:'B', deg:90}, {id:'D', c:'D', p1:'A', p2:'C', deg:90}
+            ],
+            desc: (type, item) => {
+                if(type === 'side') return `Sisi <span class="hl-s">${item.id}</span>: Pada persegi, <span class="hl-s">semua sisi sama panjang</span>.`;
+                if(type === 'angle') return `Sudut <span class="hl-a">${item.id}</span>: 90°. Semua sudutnya siku-siku.`;
+                return `Diagonal <span class="hl-p">${item.id}</span> sama panjang dan berpotongan tegak lurus.`;
+            }
+        },
+        persegiPanjang: {
+            points: { A: {x:100,y:120}, B: {x:500,y:120}, C: {x:500,y:280}, D: {x:100,y:280} },
+            sides: [
+                {id:'AB', p:'A', q:'B', pair: [0,2]}, {id:'BC', p:'B', q:'C', pair: [1,3]},
+                {id:'CD', p:'C', q:'D', pair: [0,2]}, {id:'DA', p:'D', q:'A', pair: [1,3]}
+            ],
+            diagonals: [{id:'AC', p:'A', q:'C'}, {id:'BD', p:'B', q:'D'}],
+            angles: [
+                {id:'A', c:'A', p1:'B', p2:'D', deg:90}, {id:'B', c:'B', p1:'C', p2:'A', deg:90},
+                {id:'C', c:'C', p1:'D', p2:'B', deg:90}, {id:'D', c:'D', p1:'A', p2:'C', deg:90}
+            ],
+            desc: (type, item) => {
+                if(type === 'side') return `Sisi sejajar memiliki <span class="hl-s">panjang yang sama</span>.`;
+                if(type === 'angle') return `Sudut <span class="hl-a">${item.id}</span>: 90°. Memiliki 4 sudut siku-siku.`;
+                return `Diagonal <span class="hl-p">${item.id}</span> membagi dua sama panjang.`;
+            }
+        },
+        belahKetupat: {
+            points: { A: {x:300,y:70}, B: {x:480,y:200}, C: {x:300,y:330}, D: {x:120,y:200} },
+            sides: [
+                {id:'AB', p:'A', q:'B', pair: [0,1,2,3]}, {id:'BC', p:'B', q:'C', pair: [0,1,2,3]},
+                {id:'CD', p:'C', q:'D', pair: [0,1,2,3]}, {id:'DA', p:'D', q:'A', pair: [0,1,2,3]}
+            ],
+            diagonals: [{id:'AC', p:'A', q:'C'}, {id:'BD', p:'B', q:'D'}],
+            angles: [
+                {id:'A', c:'A', p1:'B', p2:'D', deg:106}, {id:'B', c:'B', p1:'C', p2:'A', deg:74},
+                {id:'C', c:'C', p1:'D', p2:'B', deg:106}, {id:'D', c:'D', p1:'A', p2:'C', deg:74}
+            ],
+            desc: (type, item) => {
+                if(type === 'side') return `Semua sisi Belah Ketupat <span class="hl-s">sama panjang</span>.`;
+                if(type === 'angle') return `Sudut <span class="hl-a">${item.id}</span> (${item.deg}°). Sudut berhadapan sama besar.`;
+                return `Diagonal <span class="hl-p">${item.id}</span> berpotongan tegak lurus (90°).`;
+            }
+        },
+        jajarGenjang: {
+            points: { A: {x:200,y:100}, B: {x:520,y:100}, C: {x:400,y:300}, D: {x:80,y:300} },
+            sides: [
+                {id:'AB', p:'A', q:'B', pair: [0,2]}, {id:'BC', p:'B', q:'C', pair: [1,3]},
+                {id:'CD', p:'C', q:'D', pair: [0,2]}, {id:'DA', p:'D', q:'A', pair: [1,3]}
+            ],
+            diagonals: [{id:'AC', p:'A', q:'C'}, {id:'BD', p:'B', q:'D'}],
+            angles: [
+                {id:'A', c:'A', p1:'B', p2:'D', deg:117}, {id:'B', c:'B', p1:'C', p2:'A', deg:63},
+                {id:'C', c:'C', p1:'D', p2:'B', deg:117}, {id:'D', c:'D', p1:'A', p2:'C', deg:63}
+            ],
+            desc: (type, item) => {
+                if(type === 'side') return `Sisi berhadapan <span class="hl-s">sejajar dan sama panjang</span>.`;
+                if(type === 'angle') return `Sudut <span class="hl-a">${item.id}</span> (${item.deg}°). Sudut yang berdekatan berjumlah 180°.`;
+                return `Diagonal <span class="hl-p">${item.id}</span> saling membagi dua sama panjang.`;
+            }
+        }
+    };
+
+    let activeElements = { side: null, angle: null, diag: null };
+
+    function getDist(p, q) { return Math.sqrt((p.x-q.x)**2 + (p.y-q.y)**2); }
+    
+    function getDistToLine(pt, v, w) {
+        const l2 = (v.x-w.x)**2 + (v.y-w.y)**2;
+        let t = ((pt.x-v.x)*(w.x-v.x) + (pt.y-v.y)*(w.y-v.y)) / l2;
+        t = Math.max(0, Math.min(1, t));
+        return Math.sqrt((pt.x - (v.x + t*(w.x-v.x)))**2 + (pt.y - (v.y + t*(w.y-v.y)))**2);
+    }
+
+    function switchShape(name) {
+        currentShape = name;
+        activeElements = { side: null, angle: null, diag: null };
+        statusEl.innerHTML = "Pilih salah satu sisi, diagonal, atau sudut pada gambar.";
+        
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.innerText.toLowerCase().replace(" ","") === name.toLowerCase());
+        });
+        render();
+    }
+
+    function render() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const data = shapes[currentShape];
+        const pts = data.points;
+
+        // 1. Draw Angles
+        data.angles.forEach((ang, idx) => {
+            const center = pts[ang.c];
+            const p1 = pts[ang.p1];
+            const p2 = pts[ang.p2];
+            let s = Math.atan2(p1.y - center.y, p1.x - center.x);
+            let e = Math.atan2(p2.y - center.y, p2.x - center.x);
+            let diff = e - s;
+            while (diff < 0) diff += Math.PI * 2;
+            while (diff > Math.PI * 2) diff -= Math.PI * 2;
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(center.x, center.y);
+            ctx.arc(center.x, center.y, 45, s, s + diff);
+            ctx.closePath();
+            ctx.fillStyle = idx % 2 === 0 ? 'rgba(74, 222, 128, 0.1)' : 'rgba(168, 85, 247, 0.1)';
+            if (activeElements.angle === idx) ctx.globalAlpha = 0.6;
+            ctx.fill();
+            ctx.strokeStyle = idx % 2 === 0 ? '#4ade80' : '#a855f7';
+            ctx.lineWidth = activeElements.angle === idx ? 4 : 2;
+            ctx.stroke();
+            
+            if(activeElements.angle === idx) {
+                const mid = s + diff/2;
+                ctx.fillStyle = "#fff"; ctx.font = "bold 14px Inter"; ctx.textAlign = "center";
+                ctx.fillText(ang.deg+"°", center.x + Math.cos(mid)*60, center.y + Math.sin(mid)*60);
+            }
+            ctx.restore();
+        });
+
+        // 2. Draw Diagonals
+        data.diagonals.forEach((d, idx) => {
+            ctx.save();
+            ctx.beginPath();
+            if(activeElements.diag !== idx) ctx.setLineDash([8, 6]);
+            ctx.moveTo(pts[d.p].x, pts[d.p].y);
+            ctx.lineTo(pts[d.q].x, pts[d.q].y);
+            ctx.strokeStyle = activeElements.diag === idx ? "#38bdf8" : "rgba(56, 189, 248, 0.2)";
+            ctx.lineWidth = activeElements.diag === idx ? 4 : 2;
+            ctx.stroke();
+            ctx.restore();
+        });
+
+        // 3. Draw Sides
+        data.sides.forEach((s, idx) => {
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(pts[s.p].x, pts[s.p].y);
+            ctx.lineTo(pts[s.q].x, pts[s.q].y);
+            const isActive = activeElements.side !== null && data.sides[activeElements.side].pair.includes(idx);
+            ctx.strokeStyle = isActive ? "#fb7185" : "#64748b";
+            ctx.lineWidth = isActive ? 6 : 4;
+            ctx.lineCap = "round";
+            if(isActive) { ctx.shadowBlur = 15; ctx.shadowColor = "#fb7185"; }
+            ctx.stroke();
+            ctx.restore();
+        });
+
+        // 4. Labels
+        ctx.fillStyle = "#fff"; ctx.font = "800 18px Inter";
+        Object.entries(pts).forEach(([label, pos]) => {
+            let ox = label === 'A' || label === 'D' ? -25 : 15;
+            let oy = label === 'A' || label === 'B' ? -15 : 25;
+            ctx.fillText(label, pos.x + ox, pos.y + oy);
+        });
+    }
+
+    canvas.addEventListener('mousedown', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const m = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+        const data = shapes[currentShape];
+        
+        activeElements = { side: null, angle: null, diag: null };
+        let found = false;
+
+        // Check Angles
+        data.angles.forEach((ang, idx) => {
+            if(!found && getDist(m, data.points[ang.c]) < 50) {
+                activeElements.angle = idx;
+                statusEl.innerHTML = data.desc('angle', ang);
+                found = true;
+            }
+        });
+
+        // Check Diagonals
+        if(!found) {
+            data.diagonals.forEach((d, idx) => {
+                if(!found && getDistToLine(m, data.points[d.p], data.points[d.q]) < 10) {
+                    activeElements.diag = idx;
+                    statusEl.innerHTML = data.desc('diag', d);
+                    found = true;
+                }
+            });
+        }
+
+        // Check Sides
+        if(!found) {
+            data.sides.forEach((s, idx) => {
+                if(!found && getDistToLine(m, data.points[s.p], data.points[s.q]) < 10) {
+                    activeElements.side = idx;
+                    statusEl.innerHTML = data.desc('side', s);
+                    found = true;
+                }
+            });
+        }
+
+        if(!found) statusEl.innerHTML = "Pilih salah satu sisi, diagonal, atau sudut pada gambar.";
+        render();
+    });
+
+    // Init
+    render();
+</script>
+</body>
+</html>
